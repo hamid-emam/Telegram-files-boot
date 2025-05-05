@@ -4,6 +4,7 @@ from handlers.start_handler import register_start_handler
 from handlers.list_handler import register_list_handler
 from handlers.get_handler import register_get_handler
 from handlers.menu_handler import register_menu_handler
+from handlers.add_handler import register_add_handler
 
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -13,7 +14,7 @@ register_start_handler(bot)
 register_list_handler(bot)
 register_get_handler(bot)
 register_menu_handler(bot)
-
+register_add_handler(bot)
 
 
 # Start polling for bot messages
