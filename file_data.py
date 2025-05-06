@@ -7,6 +7,7 @@ files_by_section = {
         "Epidemiology 2": "https://docs.google.com/presentation/d/1dBWcNt2rqpTCzv61Ri2XoLP-CkGChdDA/export/pdf"
     },
     "Biostatistics": { 
-        "Biostatistics 1": "https://drive.google.com/uc?export=download&id=1fvvWFFnnNufE6AO4cbZywcfuUnJG9BM7"
+        "Biostatistics 1": "https://drive.google.com/uc?export=download&id=1fvvWFFnnNufE6AO4cbZywcfuUnJG9BM7",
+        "Biostatistics 2": "https://drive.google.com/uc?export=download&id=1gsxSPUsTOMFEdhEe5FhlLma172aHjXc1"
     }
 }
