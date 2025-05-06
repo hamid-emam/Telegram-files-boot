@@ -1,5 +1,5 @@
 import re
-from file_data import file_data
+from file_data import files_by_section as file_data
 
 def register_add_handler(bot):
     @bot.message_handler(commands=['add'])
