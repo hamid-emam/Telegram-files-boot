@@ -1,49 +1,38 @@
+from telebot import types
+from file_data import file_data  # Ensure this imports your current dict
 import re
-import json
-from file_data import files_by_section
-
-def build_download_link(link):
-    match = re.search(r'https://docs\.google\.com/(\w+)/d/([a-zA-Z0-9_-]+)', link)
-    if not match:
-        return None
-
-    file_type, file_id = match.groups()
-
-    if file_type == 'presentation':
-        return f"https://docs.google.com/presentation/d/{file_id}/export/pdf"
-    elif file_type == 'document':
-        return f"https://docs.google.com/document/d/{file_id}/export?format=pdf"
-    elif file_type == 'spreadsheets':
-        return f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=pdf"
-    else:
-        return f"https://drive.google.com/uc?export=download&id={file_id}"
-
-def save_to_file():
-    with open("file_data.py", "w", encoding="utf-8") as f:
-        f.write("files_by_section = ")
-        json.dump(files_by_section, f, indent=4, ensure_ascii=False)
 
 def register_add_handler(bot):
-    @bot.message_handler(commands=["add"])
-    def add_file(message):
-        parts = message.text.split(" /")
-        if len(parts) != 4:
-            bot.reply_to(message, "Use the format:\n`/add section /filename /url`", parse_mode="Markdown")
-            return
+    @bot.message_handler(commands=['add'])
+    def handle_add(message):
+        try:
+            # Split and validate message
+            parts = message.text.split(' /')
+            if len(parts) != 4:
+                bot.reply_to(message, "Incorrect format. Use:\n/add section /filename /drive_link")
+                return
 
-        _, section = parts[0].split(maxsplit=1)
-        filename = parts[1].strip()
-        url = parts[2].strip()
+            section, filename, link = parts[1], parts[2], parts[3]
 
-        download_url = build_download_link(url)
-        if not download_url:
-            bot.reply_to(message, "Invalid or unsupported Google Drive link.")
-            return
+            # Extract file ID from Google Drive link
+            match = re.search(r'/d/([a-zA-Z0-9_-]+)', link)
+            if not match:
+                bot.reply_to(message, "Invalid Google Drive link.")
+                return
+            file_id = match.group(1)
+            download_link = f"https://drive.google.com/uc?id={file_id}&export=download"
 
-        if section not in files_by_section:
-            files_by_section[section] = {}
+            # Add to file_data
+            if section not in file_data:
+                file_data[section] = {}
+            file_data[section][filename] = download_link
 
-        files_by_section[section][filename] = download_url
-        save_to_file()
+            # Append to file_data.py (persistent)
+            with open("file_data.py", "a") as f:
+                if section not in open("file_data.py").read():
+                    f.write(f"\nfile_data['{section}'] = {{}}\n")
+                f.write(f"file_data['{section}']['{filename}'] = '{download_link}'\n")
 
-        bot.reply_to(message, f"File '{filename}' added successfully under section '{section}'.")
+            bot.reply_to(message, f"Added:\nSection: {section}\nFile: {filename}")
+        except Exception as e:
+            bot.reply_to(message, f"Error: {e}")
