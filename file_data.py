@@ -8,7 +8,7 @@ SERVICE_ACCOUNT_FILE = 'service_account.json'
 
 # Scopes and folder ID
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-FOLDER_ID = 'YOUR_MAIN_FOLDER_ID'  # Replace with your folder ID
+FOLDER_ID = '1cpPjG7_pQUi_je-bnyNXFSTUyuAr0ywB'  # Replace with your folder ID
 
 # Authenticate
 creds = service_account.Credentials.from_service_account_file(
