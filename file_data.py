@@ -1,48 +1,50 @@
 import os
-import google.auth
+import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# Path to your service account key file
-SERVICE_ACCOUNT_FILE = 'infra-upgrade-459008-m3-da0667ac04de.json'
+# Load credentials from environment variable
+creds_dict = json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT'])
+creds = service_account.Credentials.from_service_account_info(creds_dict)
 
-# Scopes and folder ID
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-FOLDER_ID = '1cpPjG7_pQUi_je-bnyNXFSTUyuAr0ywB'  # Replace with your folder ID
+# Initialize Drive API
+drive_service = build('drive', 'v3', credentials=creds)
 
-# Authenticate
-creds = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+# Replace this with your main folder ID
+MAIN_FOLDER_ID = '1cpPjG7_pQUi_je-bnyNXFSTUyuAr0ywB'
 
-service = build('drive', 'v3', credentials=creds)
-
-# Function to list subfolders in main folder
-def get_subfolders(parent_id):
-    results = service.files().list(
-        q=f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false",
-        fields="files(id, name)").execute()
+def get_subfolders(folder_id):
+    query = f"'{folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false"
+    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
     return results.get('files', [])
 
-# Function to list files inside a folder
 def get_files_in_folder(folder_id):
-    results = service.files().list(
-        q=f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-        fields="files(id, name)").execute()
+    query = f"'{folder_id}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed = false"
+    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
     return results.get('files', [])
 
-# Build the dictionary
-files_by_section = {}
+def build_files_by_section():
+    files_by_section = {}
+    subfolders = get_subfolders(MAIN_FOLDER_ID)
 
-subfolders = get_subfolders(FOLDER_ID)
-for folder in subfolders:
-    section_name = folder['name']
-    files = get_files_in_folder(folder['id'])
+    for folder in subfolders:
+        section_name = folder['name']
+        files = get_files_in_folder(folder['id'])
+        files_dict = {}
 
-    section_files = {}
-    for file in files:
-        file_name = os.path.splitext(file['name'])[0]
-        file_id = file['id']
-        download_link = f"https://drive.google.com/uc?export=download&id={file_id}"
-        section_files[file_name] = download_link
+        for file in files:
+            file_id = file['id']
+            file_name = file['name']
+            # Use export for Google Slides, fallback to direct link otherwise
+            if file_name.endswith('.pptx') or file_name.endswith('.pdf'):
+                url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            else:
+                url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            files_dict[file_name] = url
 
-    files_by_section[section_name] = section_files
+        files_by_section[section_name] = files_dict
+
+    return files_by_section
+
+# Exported dictionary
+files_by_section = build_files_by_section()
