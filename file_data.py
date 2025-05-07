@@ -1,61 +1,48 @@
+import os
+import google.auth
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# Path to the service account JSON key
+# Path to your service account key file
 SERVICE_ACCOUNT_FILE = 'service_account.json'
+
+# Scopes and folder ID
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+FOLDER_ID = 'YOUR_MAIN_FOLDER_ID'  # Replace with your folder ID
 
-# Authenticate and build the service
-credentials = service_account.Credentials.from_service_account_file(
+# Authenticate
+creds = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-service = build('drive', 'v3', credentials=credentials)
 
-def list_subfolders(main_folder_id):
-    """
-    List all subfolders inside the main folder.
-    """
-    query = f"'{main_folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder'"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
+service = build('drive', 'v3', credentials=creds)
+
+# Function to list subfolders in main folder
+def get_subfolders(parent_id):
+    results = service.files().list(
+        q=f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false",
+        fields="files(id, name)").execute()
     return results.get('files', [])
 
-def list_files_in_folder(folder_id):
-    """
-    List all files in a given folder (subfolder).
-    """
-    query = f"'{folder_id}' in parents"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
+# Function to list files inside a folder
+def get_files_in_folder(folder_id):
+    results = service.files().list(
+        q=f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+        fields="files(id, name)").execute()
     return results.get('files', [])
 
-def organize_files(main_folder_id):
-    """
-    Organize files from subfolders within a main folder into sections.
-    """
-    file_data = {}
+# Build the dictionary
+files_by_section = {}
 
-    # Get all subfolders (sections) within the main folder
-    subfolders = list_subfolders(main_folder_id)
+subfolders = get_subfolders(FOLDER_ID)
+for folder in subfolders:
+    section_name = folder['name']
+    files = get_files_in_folder(folder['id'])
 
-    for subfolder in subfolders:
-        section_name = subfolder['name']
-        section_id = subfolder['id']
-        
-        # Get files inside this subfolder (section)
-        files = list_files_in_folder(section_id)
+    section_files = {}
+    for file in files:
+        file_name = os.path.splitext(file['name'])[0]
+        file_id = file['id']
+        download_link = f"https://drive.google.com/uc?export=download&id={file_id}"
+        section_files[file_name] = download_link
 
-        section_files = {}
-        for file in files:
-            # Construct the link to download the file
-            file_link = f"https://drive.google.com/uc?export=download&id={file['id']}"
-            section_files[file['name']] = file_link
-
-        # Add the section and files to the file_data dictionary
-        file_data[section_name] = section_files
-
-    return file_data
-
-# Test the script with your main folder ID
-main_folder_id = "your_main_folder_id_here"  # Replace with your main folder ID
-file_data = organize_files(main_folder_id)
-
-# Print the file_data or use it in your bot
-print(file_data)
+    files_by_section[section_name] = section_files
